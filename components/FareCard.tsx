@@ -18,6 +18,8 @@ function timeAgo(ts: number) {
 }
 
 export default function FareCard({ fare, canDelete, onDelete }: Props) {
+  const loggedBy = fare.userName || (fare.userId ? "Waka user" : "Guest");
+
   return (
     <div className="rounded-xl border-2 border-[#1A1A1A]/10 bg-white p-4 flex items-center justify-between gap-3">
       <div className="min-w-0 flex-1">
@@ -34,6 +36,9 @@ export default function FareCard({ fare, canDelete, onDelete }: Props) {
             {TIME_LABELS[fare.timeOfDay]} · {timeAgo(fare.createdAt)}
           </span>
         </div>
+        <p className="text-[11px] text-[#1A1A1A]/40 mt-0.5">
+          Logged by <span className="font-medium">{loggedBy}</span>
+        </p>
         {fare.note && (
           <p className="text-xs text-[#1A1A1A]/50 mt-1 italic truncate">
             &ldquo;{fare.note}&rdquo;
