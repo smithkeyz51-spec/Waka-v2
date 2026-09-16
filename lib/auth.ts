@@ -1,9 +1,29 @@
 import { createClient } from "@/lib/supabase/client";
 
-export async function signUp(email: string, password: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  displayName: string
+) {
   const supabase = createClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
-  return { data, error: error?.message ?? null };
+
+  if (error) {
+    return { data, error: error.message };
+  }
+
+  if (data.user) {
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: data.user.id,
+      display_name: displayName.trim(),
+    });
+
+    if (profileError) {
+      return { data, error: profileError.message };
+    }
+  }
+
+  return { data, error: null };
 }
 
 export async function signIn(email: string, password: string) {
