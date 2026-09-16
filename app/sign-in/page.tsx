@@ -9,6 +9,7 @@ import { signIn, signUp } from "@/lib/auth";
 export default function SignInPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -16,6 +17,10 @@ export default function SignInPage() {
   const [confirmMessage, setConfirmMessage] = useState("");
 
   async function handleSubmit() {
+    if (mode === "sign-up" && !name.trim()) {
+      setError("Enter a name so others can see who logged a fare.");
+      return;
+    }
     if (!email.trim() || !password) {
       setError("Enter your email and password.");
       return;
@@ -30,7 +35,11 @@ export default function SignInPage() {
     setConfirmMessage("");
 
     if (mode === "sign-up") {
-      const { error: signUpError } = await signUp(email.trim(), password);
+      const { error: signUpError } = await signUp(
+        email.trim(),
+        password,
+        name.trim()
+      );
       setSubmitting(false);
       if (signUpError) {
         setError(signUpError);
@@ -70,6 +79,23 @@ export default function SignInPage() {
         </div>
 
         <div className="space-y-3">
+          {mode === "sign-up" && (
+            <div>
+              <label className="text-xs font-medium text-[#1A1A1A]/60 block mb-1">
+                Your name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Pk"
+                className="w-full rounded-lg border-2 border-[#1A1A1A]/10 px-3 py-2.5 text-sm focus:border-[#F7C548] outline-none bg-white"
+              />
+              <p className="text-[11px] text-[#1A1A1A]/40 mt-1">
+                Shown on fares you log, e.g. &ldquo;Logged by Pk&rdquo;
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-[#1A1A1A]/60 block mb-1">
               Email
