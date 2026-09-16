@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function Header() {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, displayName, loading } = useAuth();
 
   return (
     <header className="border-b-4 border-[#111111] bg-[#F7C548]">
@@ -35,6 +35,14 @@ export default function Header() {
         )}
       </div>
       <div className="h-2 bg-[#111111]" />
+
+      {!loading && user && (
+        <div className="bg-[#1A1A1A] px-5 py-2">
+          <p className="mx-auto max-w-3xl text-sm text-[#F7C548] font-medium">
+            Welcome, {displayName || user.email?.split("@")[0]} 👋
+          </p>
+        </div>
+      )}
     </header>
   );
 }
