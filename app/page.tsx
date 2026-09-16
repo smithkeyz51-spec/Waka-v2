@@ -8,23 +8,38 @@ import FareCard from "@/components/FareCard";
 import SearchBar from "@/components/SearchBar";
 import EmptyState from "@/components/EmptyState";
 import NewFareToast from "@/components/NewFareToast";
-import { loadFares, addFare, deleteFare, subscribeToFares } from "@/lib/fares";
+import CityStatsPanel from "@/components/CityStatsPanel";
+import {
+  loadFares,
+  addFare,
+  deleteFare,
+  subscribeToFares,
+  loadCityStats,
+  CityStats,
+} from "@/lib/fares";
 import { CITIES, Fare, TimeOfDay, VehicleType } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
+
+const EMPTY_STATS: CityStats = { totalFares: 0, today: 0, topContributors: [] };
 
 export default function Home() {
   const { user, isAdmin } = useAuth();
   const [city, setCity] = useState<string>(CITIES[0]);
   const [fares, setFares] = useState<Fare[]>([]);
+  const [stats, setStats] = useState<CityStats>(EMPTY_STATS);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [incomingFare, setIncomingFare] = useState<Fare | null>(null);
 
   const refresh = useCallback(async (targetCity: string) => {
     setLoading(true);
-    const data = await loadFares(targetCity);
+    const [data, cityStats] = await Promise.all([
+      loadFares(targetCity),
+      loadCityStats(targetCity),
+    ]);
     setFares(data);
+    setStats(cityStats);
     setLoading(false);
   }, []);
 
@@ -108,6 +123,10 @@ export default function Home() {
             </>
           )}
         </div>
+
+        {!loading && !query.trim() && (
+          <CityStatsPanel city={city} stats={stats} />
+        )}
       </main>
       <footer className="border-t-2 border-[#1A1A1A]/8 py-5 text-center">
         <p className="text-xs text-[#1A1A1A]/40">
