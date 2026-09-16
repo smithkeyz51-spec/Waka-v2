@@ -5,7 +5,7 @@ export async function loadFares(city?: string): Promise<Fare[]> {
   const supabase = createClient();
   let query = supabase
     .from("fares")
-    .select("*, profiles(display_name)")
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (city) {
@@ -18,8 +18,41 @@ export async function loadFares(city?: string): Promise<Fare[]> {
     console.error("Failed to load fares:", error.message);
     return [];
   }
+  if (!data) {
+    return [];
+  }
 
-  return (data as unknown as FareRow[]).map(rowToFare);
+  const userIds = Array.from(
+    new Set(
+      (data as FareRow[])
+        .map((r) => r.user_id)
+        .filter((id): id is string => !!id)
+    )
+  );
+
+  const nameById = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profileRows, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+
+    if (profileError) {
+      console.error("Failed to load profiles:", profileError.message);
+    } else {
+      for (const p of profileRows ?? []) {
+        if (p.display_name) nameById.set(p.id, p.display_name);
+      }
+    }
+  }
+
+  return (data as FareRow[]).map((row) => {
+    const fare = rowToFare(row);
+    if (row.user_id) {
+      fare.userName = nameById.get(row.user_id) ?? null;
+    }
+    return fare;
+  });
 }
 
 export async function addFare(fare: {
