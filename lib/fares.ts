@@ -82,11 +82,15 @@ export async function loadCityStats(city: string): Promise<CityStats> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("fares")
-    .select("created_at, user_id, profiles(display_name)")
+    .select("created_at, user_id")
     .eq("city", city)
     .limit(1000);
 
-  if (error || !data) {
+  if (error) {
+    console.error("Failed to load city stats:", error.message);
+    return { totalFares: 0, today: 0, topContributors: [] };
+  }
+  if (!data) {
     return { totalFares: 0, today: 0, topContributors: [] };
   }
 
@@ -97,14 +101,30 @@ export async function loadCityStats(city: string): Promise<CityStats> {
     (row) => new Date(row.created_at).getTime() >= startOfToday.getTime()
   ).length;
 
+  const userIds = Array.from(
+    new Set(data.map((r) => r.user_id).filter((id): id is string => !!id))
+  );
+
+  const nameById = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profileRows, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+
+    if (profileError) {
+      console.error("Failed to load profiles:", profileError.message);
+    } else {
+      for (const p of profileRows ?? []) {
+        if (p.display_name) nameById.set(p.id, p.display_name);
+      }
+    }
+  }
+
   const counts = new Map<string, number>();
   for (const row of data) {
-    const rowData = row as unknown as {
-      user_id: string | null;
-      profiles: { display_name: string | null } | null;
-    };
-    if (!rowData.user_id) continue;
-    const name = rowData.profiles?.display_name || "Anonymous";
+    if (!row.user_id) continue;
+    const name = nameById.get(row.user_id) || "Anonymous";
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
