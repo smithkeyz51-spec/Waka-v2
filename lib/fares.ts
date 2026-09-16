@@ -5,7 +5,7 @@ export async function loadFares(city?: string): Promise<Fare[]> {
   const supabase = createClient();
   let query = supabase
     .from("fares")
-    .select("*")
+    .select("*, profiles(display_name)")
     .order("created_at", { ascending: false });
 
   if (city) {
@@ -19,7 +19,7 @@ export async function loadFares(city?: string): Promise<Fare[]> {
     return [];
   }
 
-  return (data as FareRow[]).map(rowToFare);
+  return (data as unknown as FareRow[]).map(rowToFare);
 }
 
 export async function addFare(fare: {
@@ -70,6 +70,54 @@ export async function deleteFare(
   }
 
   return { success: true, error: null };
+}
+
+export interface CityStats {
+  totalFares: number;
+  today: number;
+  topContributors: { name: string; count: number }[];
+}
+
+export async function loadCityStats(city: string): Promise<CityStats> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("fares")
+    .select("created_at, user_id, profiles(display_name)")
+    .eq("city", city)
+    .limit(1000);
+
+  if (error || !data) {
+    return { totalFares: 0, today: 0, topContributors: [] };
+  }
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const todayCount = data.filter(
+    (row) => new Date(row.created_at).getTime() >= startOfToday.getTime()
+  ).length;
+
+  const counts = new Map<string, number>();
+  for (const row of data) {
+    const rowData = row as unknown as {
+      user_id: string | null;
+      profiles: { display_name: string | null } | null;
+    };
+    if (!rowData.user_id) continue;
+    const name = rowData.profiles?.display_name || "Anonymous";
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+
+  const topContributors = Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return {
+    totalFares: data.length,
+    today: todayCount,
+    topContributors,
+  };
 }
 
 export function subscribeToFares(onInsert: (fare: Fare) => void) {
