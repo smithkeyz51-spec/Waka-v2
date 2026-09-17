@@ -163,8 +163,7 @@ export async function loadCityStats(city: string): Promise<CityStats> {
 
   const topContributors = Array.from(counts.entries())
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+    .sort((a, b) => b.count - a.count);
 
   return {
     totalFares: data.length,
