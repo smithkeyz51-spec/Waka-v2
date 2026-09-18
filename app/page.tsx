@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 
 const EMPTY_STATS: CityStats = { totalFares: 0, today: 0, topContributors: [] };
+const PAGE_SIZE = 10;
 
 export default function Home() {
   const { user, isAdmin } = useAuth();
@@ -29,6 +30,7 @@ export default function Home() {
   const [fares, setFares] = useState<Fare[]>([]);
   const [stats, setStats] = useState<CityStats>(EMPTY_STATS);
   const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [incomingFare, setIncomingFare] = useState<Fare | null>(null);
 
@@ -45,6 +47,7 @@ export default function Home() {
 
   useEffect(() => {
     refresh(city);
+    setVisibleCount(PAGE_SIZE);
   }, [city, refresh]);
 
   useEffect(() => {
@@ -92,6 +95,9 @@ export default function Home() {
     );
   }, [fares, query]);
 
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = filtered.length > visibleCount;
+
   return (
     <div className="flex-1 flex flex-col">
       <Header />
@@ -100,7 +106,13 @@ export default function Home() {
 
         <LogFareForm city={city} onSubmit={handleAddFare} />
 
-        <SearchBar value={query} onChange={setQuery} />
+        <SearchBar
+          value={query}
+          onChange={(v) => {
+            setQuery(v);
+            setVisibleCount(PAGE_SIZE);
+          }}
+        />
 
         <div className="space-y-2.5">
           {loading ? (
@@ -112,7 +124,7 @@ export default function Home() {
               {filtered.length === 0 && (
                 <EmptyState city={city} hasSearch={query.trim().length > 0} />
               )}
-              {filtered.map((fare) => (
+              {visible.map((fare) => (
                 <FareCard
                   key={fare.id}
                   fare={fare}
@@ -120,6 +132,14 @@ export default function Home() {
                   onDelete={handleDelete}
                 />
               ))}
+              {hasMore && (
+                <button
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="w-full rounded-lg border-2 border-[#1A1A1A]/10 py-2.5 text-sm font-medium text-[#1A1A1A]/60 hover:border-[#1A1A1A]/25 transition-colors"
+                >
+                  Show more ({filtered.length - visibleCount} more)
+                </button>
+              )}
             </>
           )}
         </div>
