@@ -9,6 +9,7 @@ import { signOut } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Fare, FareRow, rowToFare } from "@/lib/types";
 import FareCard from "@/components/FareCard";
+import NotificationToggle from "@/components/NotificationToggle";
 
 export default function AccountPage() {
   const { user, isAdmin, loading } = useAuth();
@@ -98,6 +99,8 @@ export default function AccountPage() {
             Sign out
           </button>
         </div>
+
+        <NotificationToggle />
 
         <div>
           <h2 className="font-display font-semibold text-[#1A1A1A] mb-2.5">
