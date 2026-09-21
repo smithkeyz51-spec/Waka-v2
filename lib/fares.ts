@@ -89,7 +89,23 @@ export async function addFare(fare: {
     return { fare: null, error: error.message };
   }
 
-  return { fare: rowToFare(data as FareRow), error: null };
+  const newFare = rowToFare(data as FareRow);
+
+  fetch("/api/notify-fare", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: fare.from,
+      to: fare.to,
+      amount: fare.amount,
+      city: fare.city,
+      fareId: newFare.id,
+    }),
+  }).catch(() => {
+    // Ignore — push notifications are best-effort.
+  });
+
+  return { fare: newFare, error: null };
 }
 
 export async function deleteFare(
