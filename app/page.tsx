@@ -9,6 +9,7 @@ import SearchBar from "@/components/SearchBar";
 import EmptyState from "@/components/EmptyState";
 import NewFareToast from "@/components/NewFareToast";
 import CityStatsPanel from "@/components/CityStatsPanel";
+import IOSInstallBanner from "@/components/IOSInstallBanner";
 import {
   loadFares,
   addFare,
@@ -102,6 +103,8 @@ export default function Home() {
     <div className="flex-1 flex flex-col">
       <Header />
       <main className="flex-1 mx-auto max-w-3xl w-full px-5 py-6 space-y-5">
+        <IOSInstallBanner />
+
         <CitySelector selected={city} onSelect={setCity} />
 
         <LogFareForm city={city} onSubmit={handleAddFare} />
