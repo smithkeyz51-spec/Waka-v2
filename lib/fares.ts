@@ -6,6 +6,7 @@ export async function loadFares(city?: string): Promise<Fare[]> {
   let query = supabase
     .from("fares")
     .select("*")
+    .eq("hidden", false)
     .order("created_at", { ascending: false });
 
   if (city) {
@@ -108,11 +109,49 @@ export async function addFare(fare: {
   return { fare: newFare, error: null };
 }
 
+// Used when a user deletes their own logged fare — a real delete,
+// since it's their own data and their own choice.
 export async function deleteFare(
   id: string
 ): Promise<{ success: boolean; error: string | null }> {
   const supabase = createClient();
   const { error } = await supabase.from("fares").delete().eq("id", id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, error: null };
+}
+
+// Used by admin moderation — hides a fare from the public feed
+// without deleting it. The original user still sees it on their own
+// Account page, and it still counts toward their contributor total.
+export async function hideFare(
+  id: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("fares")
+    .update({ hidden: true })
+    .eq("id", id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, error: null };
+}
+
+// Reverses hideFare — restores a fare to the public feed.
+export async function unhideFare(
+  id: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("fares")
+    .update({ hidden: false })
+    .eq("id", id);
 
   if (error) {
     return { success: false, error: error.message };
@@ -128,6 +167,9 @@ export interface CityStats {
 }
 
 export async function loadCityStats(city: string): Promise<CityStats> {
+  // Intentionally does not filter by `hidden` — a contributor's
+  // fare count should stay intact even if an admin hides that fare
+  // from the public feed for moderation reasons.
   const supabase = createClient();
   const { data, error } = await supabase
     .from("fares")
