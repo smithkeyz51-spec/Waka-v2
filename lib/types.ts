@@ -1,6 +1,7 @@
 export type VehicleType = "danfo" | "keke" | "brt" | "bolt" | "bus";
 export type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
 
+// Shape used throughout the UI (camelCase).
 export interface Fare {
   id: string;
   city: string;
@@ -12,9 +13,11 @@ export interface Fare {
   note?: string;
   userId?: string | null;
   userName?: string | null;
+  hidden?: boolean;
   createdAt: number;
 }
 
+// Row shape as it actually comes back from Supabase (snake_case columns).
 export interface FareRow {
   id: string;
   city: string;
@@ -26,6 +29,7 @@ export interface FareRow {
   note: string | null;
   user_id: string | null;
   created_at: string;
+  hidden?: boolean | null;
   profiles?: { display_name: string | null } | null;
 }
 
@@ -41,6 +45,7 @@ export function rowToFare(row: FareRow): Fare {
     note: row.note ?? undefined,
     userId: row.user_id,
     userName: row.profiles?.display_name ?? null,
+    hidden: row.hidden ?? false,
     createdAt: new Date(row.created_at).getTime(),
   };
 }
