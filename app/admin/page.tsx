@@ -3,10 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Trash2, ShieldOff } from "lucide-react";
+import { ArrowLeft, Loader2, EyeOff, Eye, ShieldOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { CITIES, Fare, FareRow, rowToFare } from "@/lib/types";
+import { hideFare, unhideFare } from "@/lib/fares";
 
 export default function AdminPage() {
   const { user, isAdmin, loading } = useAuth();
@@ -40,11 +41,15 @@ export default function AdminPage() {
     loadAll();
   }, [isAdmin]);
 
-  async function handleDelete(id: string) {
-    const supabase = createClient();
-    const { error } = await supabase.from("fares").delete().eq("id", id);
-    if (!error) {
-      setFares((prev) => prev.filter((f) => f.id !== id));
+  async function handleHideToggle(fare: Fare) {
+    const action = fare.hidden ? unhideFare : hideFare;
+    const { success } = await action(fare.id);
+    if (success) {
+      setFares((prev) =>
+        prev.map((f) =>
+          f.id === fare.id ? { ...f, hidden: !fare.hidden } : f
+        )
+      );
     }
   }
 
@@ -64,6 +69,7 @@ export default function AdminPage() {
       last24h: fares.filter(
         (f) => Date.now() - f.createdAt < 1000 * 60 * 60 * 24
       ).length,
+      hidden: fares.filter((f) => f.hidden).length,
     };
   }, [fares]);
 
@@ -90,26 +96,38 @@ export default function AdminPage() {
       </header>
 
       <main className="flex-1 mx-auto max-w-3xl w-full px-5 py-6 space-y-5">
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-4 gap-2">
           <div className="rounded-xl border-2 border-[#1A1A1A]/10 bg-white p-3 text-center">
-            <p className="font-display text-2xl font-bold text-[#1A1A1A]">
+            <p className="font-display text-xl font-bold text-[#1A1A1A]">
               {stats.total}
             </p>
-            <p className="text-[11px] text-[#1A1A1A]/50">Total fares</p>
+            <p className="text-[10px] text-[#1A1A1A]/50">Total</p>
           </div>
           <div className="rounded-xl border-2 border-[#1A1A1A]/10 bg-white p-3 text-center">
-            <p className="font-display text-2xl font-bold text-[#1A1A1A]">
+            <p className="font-display text-xl font-bold text-[#1A1A1A]">
               {stats.last24h}
             </p>
-            <p className="text-[11px] text-[#1A1A1A]/50">Last 24h</p>
+            <p className="text-[10px] text-[#1A1A1A]/50">Last 24h</p>
           </div>
           <div className="rounded-xl border-2 border-[#1A1A1A]/10 bg-white p-3 text-center">
-            <p className="font-display text-2xl font-bold text-[#1A1A1A]">
+            <p className="font-display text-xl font-bold text-[#1A1A1A]">
               {Object.keys(stats.byCity).length}
             </p>
-            <p className="text-[11px] text-[#1A1A1A]/50">Active cities</p>
+            <p className="text-[10px] text-[#1A1A1A]/50">Cities</p>
+          </div>
+          <div className="rounded-xl border-2 border-[#1A1A1A]/10 bg-white p-3 text-center">
+            <p className="font-display text-xl font-bold text-[#1A1A1A]">
+              {stats.hidden}
+            </p>
+            <p className="text-[10px] text-[#1A1A1A]/50">Hidden</p>
           </div>
         </div>
+
+        <p className="text-xs text-[#1A1A1A]/45 -mt-2">
+          Hiding a fare removes it from the public feed only — it still
+          shows on the user&apos;s own account and still counts toward
+          their contributor total.
+        </p>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button
@@ -153,7 +171,11 @@ export default function AdminPage() {
             filtered.map((fare) => (
               <div
                 key={fare.id}
-                className="rounded-lg border-2 border-[#1A1A1A]/10 bg-white p-3 flex items-center justify-between gap-3"
+                className={`rounded-lg border-2 p-3 flex items-center justify-between gap-3 ${
+                  fare.hidden
+                    ? "border-red-200 bg-red-50/50"
+                    : "border-[#1A1A1A]/10 bg-white"
+                }`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-[#1A1A1A] truncate">
@@ -161,11 +183,17 @@ export default function AdminPage() {
                     <span className="text-[#1A1A1A]/40 font-normal">
                       ({fare.city})
                     </span>
+                    {fare.hidden && (
+                      <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">
+                        Hidden
+                      </span>
+                    )}
                   </p>
                   <p className="text-[11px] text-[#1A1A1A]/45">
                     ₦{fare.amount.toLocaleString()} ·{" "}
-                    {fare.userId ? "registered user" : "guest"} ·{" "}
-                    {new Date(fare.createdAt).toLocaleString()}
+                    {fare.userName ||
+                      (fare.userId ? "registered user" : "guest")}{" "}
+                    · {new Date(fare.createdAt).toLocaleString()}
                   </p>
                   {fare.note && (
                     <p className="text-[11px] text-[#1A1A1A]/40 italic truncate">
@@ -174,11 +202,15 @@ export default function AdminPage() {
                   )}
                 </div>
                 <button
-                  onClick={() => handleDelete(fare.id)}
-                  className="text-[#1A1A1A]/30 hover:text-red-600 shrink-0"
-                  aria-label="Delete fare"
+                  onClick={() => handleHideToggle(fare)}
+                  className={`shrink-0 ${
+                    fare.hidden
+                      ? "text-[#2E7D5B]"
+                      : "text-[#1A1A1A]/30 hover:text-red-600"
+                  }`}
+                  aria-label={fare.hidden ? "Unhide fare" : "Hide fare"}
                 >
-                  <Trash2 size={16} />
+                  {fare.hidden ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
               </div>
             ))
